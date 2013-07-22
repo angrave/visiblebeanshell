@@ -162,6 +162,12 @@ class SimpleNode implements Node
 			"Unimplemented or inappropriate for " + getClass().getName() );
 	}
 
+    public void evalNote() {
+        System.out.print(">>");
+        System.out.print(firstToken.beginLine);
+        System.out.println("<<");
+    }
+
 	/**
 		Set the name of the source file (or more generally source) of
 		the text from which this node was parsed.
