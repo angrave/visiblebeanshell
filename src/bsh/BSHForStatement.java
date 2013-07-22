@@ -55,6 +55,7 @@ class BSHForStatement extends SimpleNode implements ParserConstants
     public Object eval(CallStack callstack , Interpreter interpreter)  
 		throws EvalError
     {
+        evalNote();
         int i = 0;
         if(hasForInit)
             forInit = ((SimpleNode)jjtGetChild(i++));
@@ -75,7 +76,7 @@ class BSHForStatement extends SimpleNode implements ParserConstants
 			acts like we are in the enclosing namespace...  (super must be 
 			preserved, etc.)
 
-			2) We do *not* call the body block eval with the namespace 
+			2) We do *not* call the body block   eval with the namespace 
 			override.  Instead we allow it to create a second subordinate 
 			BlockNameSpace child of the forNameSpace.  Variable propogation 
 			still works through the chain, but the block's child cleans the 
