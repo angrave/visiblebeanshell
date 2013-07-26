@@ -164,7 +164,7 @@ class SimpleNode implements Node
 
     public void evalNote() {
         System.out.print(">>");
-        System.out.print(firstToken.beginLine);
+        System.out.print(firstToken.specialToken);
         System.out.println("<<");
     }
 
