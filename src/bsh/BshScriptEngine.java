@@ -1,15 +1,5 @@
 package bsh;
 
-import javax.script.AbstractScriptEngine;
-import javax.script.Bindings;
-import javax.script.Compilable;
-import javax.script.CompiledScript;
-import javax.script.Invocable;
-import javax.script.ScriptContext;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineFactory;
-import javax.script.ScriptException;
-import javax.script.SimpleBindings;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -21,11 +11,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.script.AbstractScriptEngine;
+import javax.script.Bindings;
+import javax.script.Compilable;
+import javax.script.CompiledScript;
+import javax.script.Invocable;
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
+import javax.script.ScriptException;
+import javax.script.SimpleBindings;
+
 /*
-	Adopted from http://ikayzo.org/svn/beanshell/BeanShell/engine/src/bsh/engine/BshScriptEngine.java
-	Notes
-	This engine supports open-ended pluggable scriptcontexts
-*/
+ Adopted from http://ikayzo.org/svn/beanshell/BeanShell/engine/src/bsh/engine/BshScriptEngine.java
+ Notes
+ This engine supports open-ended pluggable scriptcontexts
+ */
 
 public class BshScriptEngine extends AbstractScriptEngine implements Compilable, Invocable {
 	// The BeanShell global namespace for the interpreter is stored in the
@@ -35,17 +36,14 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 	private BshScriptEngineFactory factory;
 	private bsh.Interpreter interpreter;
 
-
 	public BshScriptEngine() {
 		this(null);
 	}
-
 
 	public BshScriptEngine(BshScriptEngineFactory factory) {
 		this.factory = factory;
 		getInterpreter(); // go ahead and prime the interpreter now
 	}
-
 
 	protected Interpreter getInterpreter() {
 		if (interpreter == null) {
@@ -56,23 +54,19 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		return interpreter;
 	}
 
-
 	public Object eval(String script, ScriptContext scriptContext) throws ScriptException {
 		return evalSource(script, scriptContext);
 	}
-
 
 	public Object eval(Reader reader, ScriptContext scriptContext) throws ScriptException {
 		return evalSource(reader, scriptContext);
 	}
 
 	/*
-		This is the primary implementation method.
-		We respect the String/Reader difference here in BeanShell because
-		BeanShell will do a few extra things in the string case... e.g.
-		tack on a trailing ";" semicolon if necessary.
-	*/
-
+	 * This is the primary implementation method. We respect the String/Reader
+	 * difference here in BeanShell because BeanShell will do a few extra things
+	 * in the string case... e.g. tack on a trailing ";" semicolon if necessary.
+	 */
 
 	private Object evalSource(Object source, ScriptContext scriptContext) throws ScriptException {
 		bsh.NameSpace contextNameSpace = getEngineNameSpace(scriptContext);
@@ -106,19 +100,15 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		}
 	}
 
-
 	private PrintStream toPrintStream(final Writer writer) {
 		// This is a big hack, convert writer to PrintStream
 		return new PrintStream(new WriterOutputStream(writer));
 	}
 
-
 	/*
-		Check the context for an existing global namespace embedded
-		in the script context engine scope.  If none exists, ininitialize the
-		context with one.
-	*/
-
+	 * Check the context for an existing global namespace embedded in the script
+	 * context engine scope. If none exists, ininitialize the context with one.
+	 */
 
 	private static NameSpace getEngineNameSpace(ScriptContext scriptContext) {
 		NameSpace ns = (NameSpace) scriptContext.getAttribute(engineNameSpaceKey, ScriptContext.ENGINE_SCOPE);
@@ -126,7 +116,7 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		if (ns == null) {
 			// Create a global namespace for the interpreter
 			Map<String, Object> engineView = new ScriptContextEngineView(scriptContext);
-			ns = new ExternalNameSpace(null/*parent*/, "javax_script_context", engineView);
+			ns = new ExternalNameSpace(null/* parent */, "javax_script_context", engineView);
 
 			scriptContext.setAttribute(engineNameSpaceKey, ns, ScriptContext.ENGINE_SCOPE);
 		}
@@ -134,11 +124,9 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		return ns;
 	}
 
-
 	public Bindings createBindings() {
 		return new SimpleBindings();
 	}
-
 
 	public ScriptEngineFactory getFactory() {
 		if (factory == null) {
@@ -147,16 +135,18 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		return factory;
 	}
 
-
 	/**
 	 * Compiles the script (source represented as a {@code String}) for later
 	 * execution.
-	 *
-	 * @param script The source of the script, represented as a {@code String}.
-	 * @return An subclass of {@code CompiledScript} to be executed later
-	 *         using one of the {@code eval} methods of {@code CompiledScript}.
-	 * @throws ScriptException	  if compilation fails.
-	 * @throws NullPointerException if the argument is null.
+	 * 
+	 * @param script
+	 *            The source of the script, represented as a {@code String}.
+	 * @return An subclass of {@code CompiledScript} to be executed later using
+	 *         one of the {@code eval} methods of {@code CompiledScript}.
+	 * @throws ScriptException
+	 *             if compilation fails.
+	 * @throws NullPointerException
+	 *             if the argument is null.
 	 */
 
 	public CompiledScript compile(String script) throws ScriptException {
@@ -182,7 +172,6 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 					}
 				}
 
-
 				@Override
 				public ScriptEngine getEngine() {
 					return BshScriptEngine.this;
@@ -194,11 +183,9 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		}
 	}
 
-
 	private ScriptException constructScriptException(final EvalError e) {
 		return new ScriptException(e.getMessage(), e.getErrorSourceFile(), e.getErrorLineNumber());
 	}
-
 
 	private static String convertToString(Reader reader) throws IOException {
 		final StringBuffer buffer = new StringBuffer(64);
@@ -210,18 +197,19 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		return buffer.toString();
 	}
 
-	
 	/**
 	 * Compiles the script (source read from {@code Reader}) for later
-	 * execution.  Functionality is identical to {@code compile(String)} other
+	 * execution. Functionality is identical to {@code compile(String)} other
 	 * than the way in which the source is passed.
-	 *
-	 * @param script The reader from which the script source is obtained.
-	 * @return An implementation of {@code CompiledScript} to be executed
-	 *         later using one of its {@code eval} methods of
-	 *         {@code CompiledScript}.
-	 * @throws ScriptException	  if compilation fails.
-	 * @throws NullPointerException if argument is null.
+	 * 
+	 * @param script
+	 *            The reader from which the script source is obtained.
+	 * @return An implementation of {@code CompiledScript} to be executed later
+	 *         using one of its {@code eval} methods of {@code CompiledScript}.
+	 * @throws ScriptException
+	 *             if compilation fails.
+	 * @throws NullPointerException
+	 *             if argument is null.
 	 */
 	public CompiledScript compile(Reader script) throws ScriptException {
 		try {
@@ -231,8 +219,7 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		}
 	}
 
-
-	/**
+/**
 	 * Calls a procedure compiled during a previous script execution, which is
 	 * retained in the state of the {@code ScriptEngine{@code .
 	 *
@@ -280,57 +267,63 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		}
 	}
 
-
 	/**
-	 * Same as invoke(Object, String, Object...) with {@code null} as the
-	 * first argument.  Used to call top-level procedures defined in scripts.
-	 *
-	 * @param args Arguments to pass to the procedure
+	 * Same as invoke(Object, String, Object...) with {@code null} as the first
+	 * argument. Used to call top-level procedures defined in scripts.
+	 * 
+	 * @param args
+	 *            Arguments to pass to the procedure
 	 * @return The value returned by the procedure
-	 * @throws javax.script.ScriptException if an error occurrs during invocation
-	 *                                      of the method.
-	 * @throws NoSuchMethodException		if method with given name or matching
-	 *                                      argument types cannot be found.
-	 * @throws NullPointerException		 if method name is null.
+	 * @throws javax.script.ScriptException
+	 *             if an error occurrs during invocation of the method.
+	 * @throws NoSuchMethodException
+	 *             if method with given name or matching argument types cannot
+	 *             be found.
+	 * @throws NullPointerException
+	 *             if method name is null.
 	 */
 	public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
 		return invokeMethod(getGlobal(), name, args);
 	}
 
-
 	/**
-	 * Returns an implementation of an interface using procedures compiled in the
-	 * interpreter. The methods of the interface may be implemented using the
-	 * {@code invoke} method.
-	 *
-	 * @param clasz The {@code Class} object of the interface to return.
-	 * @return An instance of requested interface - null if the requested interface
-	 *         is unavailable, i. e. if compiled methods in the
+	 * Returns an implementation of an interface using procedures compiled in
+	 * the interpreter. The methods of the interface may be implemented using
+	 * the {@code invoke} method.
+	 * 
+	 * @param clasz
+	 *            The {@code Class} object of the interface to return.
+	 * @return An instance of requested interface - null if the requested
+	 *         interface is unavailable, i. e. if compiled methods in the
 	 *         {@code ScriptEngine} cannot be found matching the ones in the
 	 *         requested interface.
-	 * @throws IllegalArgumentException if the specified {@code Class} object
-	 *                                  does not exist or is not an interface.
+	 * @throws IllegalArgumentException
+	 *             if the specified {@code Class} object does not exist or is
+	 *             not an interface.
 	 */
 	public <T> T getInterface(Class<T> clasz) {
 		return clasz.cast(getGlobal().getInterface(clasz));
 	}
 
-
 	/**
 	 * Returns an implementation of an interface using member functions of a
-	 * scripting object compiled in the interpreter. The methods of the interface
-	 * may be implemented using invoke(Object, String, Object...) method.
-	 *
-	 * @param thiz  The scripting object whose member functions are used to
-	 *              implement the methods of the interface.
-	 * @param clasz The {@code Class} object of the interface to return.
+	 * scripting object compiled in the interpreter. The methods of the
+	 * interface may be implemented using invoke(Object, String, Object...)
+	 * method.
+	 * 
+	 * @param thiz
+	 *            The scripting object whose member functions are used to
+	 *            implement the methods of the interface.
+	 * @param clasz
+	 *            The {@code Class} object of the interface to return.
 	 * @return An instance of requested interface - null if the requested
 	 *         interface is unavailable, i. e. if compiled methods in the
 	 *         {@code ScriptEngine} cannot be found matching the ones in the
 	 *         requested interface.
-	 * @throws IllegalArgumentException if the specified {@code Class} object
-	 *                                  does not exist or is not an interface, or if the specified Object is null
-	 *                                  or does not represent a scripting object.
+	 * @throws IllegalArgumentException
+	 *             if the specified {@code Class} object does not exist or is
+	 *             not an interface, or if the specified Object is null or does
+	 *             not represent a scripting object.
 	 */
 	public <T> T getInterface(Object thiz, Class<T> clasz) {
 		if (!(thiz instanceof bsh.This)) {
@@ -341,36 +334,30 @@ public class BshScriptEngine extends AbstractScriptEngine implements Compilable,
 		return clasz.cast(bshThis.getInterface(clasz));
 	}
 
-
 	private bsh.This getGlobal() {
 		// requires 2.0b5 to make getThis() public
 		return getEngineNameSpace(getContext()).getThis(getInterpreter());
 	}
 
 	/*
-		This is a total hack.  We need to introduce a writer to the
-		Interpreter.
-	*/
+	 * This is a total hack. We need to introduce a writer to the Interpreter.
+	 */
 
 	class WriterOutputStream extends OutputStream {
 
 		Writer writer;
 
-
 		WriterOutputStream(Writer writer) {
 			this.writer = writer;
 		}
-
 
 		public void write(int b) throws IOException {
 			writer.write(b);
 		}
 
-
 		public void flush() throws IOException {
 			writer.flush();
 		}
-
 
 		public void close() throws IOException {
 			writer.close();

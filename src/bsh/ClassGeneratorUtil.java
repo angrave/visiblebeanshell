@@ -33,61 +33,64 @@
 
 package bsh;
 
-import bsh.org.objectweb.asm.*;
-import bsh.org.objectweb.asm.Type;
-
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import bsh.org.objectweb.asm.ClassWriter;
+import bsh.org.objectweb.asm.CodeVisitor;
+import bsh.org.objectweb.asm.Constants;
+import bsh.org.objectweb.asm.Label;
+import bsh.org.objectweb.asm.Type;
+
 /**
- * ClassGeneratorUtil utilizes the ASM (www.objectweb.org) bytecode generator
- * by Eric Bruneton in order to generate class "stubs" for BeanShell at
- * runtime.
+ * ClassGeneratorUtil utilizes the ASM (www.objectweb.org) bytecode generator by
+ * Eric Bruneton in order to generate class "stubs" for BeanShell at runtime.
  * <p/>
  * <p/>
- * Stub classes contain all of the fields of a BeanShell scripted class
- * as well as two "callback" references to BeanShell namespaces: one for
- * static methods and one for instance methods.  Methods of the class are
- * delegators which invoke corresponding methods on either the static or
- * instance bsh object and then unpack and return the results.  The static
- * namespace utilizes a static import to delegate variable access to the
- * class' static fields.  The instance namespace utilizes a dynamic import
- * (i.e. mixin) to delegate variable access to the class' instance variables.
+ * Stub classes contain all of the fields of a BeanShell scripted class as well
+ * as two "callback" references to BeanShell namespaces: one for static methods
+ * and one for instance methods. Methods of the class are delegators which
+ * invoke corresponding methods on either the static or instance bsh object and
+ * then unpack and return the results. The static namespace utilizes a static
+ * import to delegate variable access to the class' static fields. The instance
+ * namespace utilizes a dynamic import (i.e. mixin) to delegate variable access
+ * to the class' instance variables.
  * <p/>
  * <p/>
  * Constructors for the class delegate to the static initInstance() method of
- * ClassGeneratorUtil to initialize new instances of the object.  initInstance()
- * invokes the instance intializer code (init vars and instance blocks) and
- * then delegates to the corresponding scripted constructor method in the
- * instance namespace.  Constructors contain special switch logic which allows
- * the BeanShell to control the calling of alternate constructors (this() or
- * super() references) at runtime.
+ * ClassGeneratorUtil to initialize new instances of the object. initInstance()
+ * invokes the instance intializer code (init vars and instance blocks) and then
+ * delegates to the corresponding scripted constructor method in the instance
+ * namespace. Constructors contain special switch logic which allows the
+ * BeanShell to control the calling of alternate constructors (this() or super()
+ * references) at runtime.
  * <p/>
  * <p/>
  * Specially named superclass delegator methods are also generated in order to
  * allow BeanShell to access overridden methods of the superclass (which
  * reflection does not normally allow).
  * <p/>
- *
+ * 
  * @author Pat Niemeyer
  */
 /*
-	Notes:
-	It would not be hard to eliminate the use of org.objectweb.asm.Type from
-	this class, making the distribution a tiny bit smaller.
-*/
+ * Notes: It would not be hard to eliminate the use of org.objectweb.asm.Type
+ * from this class, making the distribution a tiny bit smaller.
+ */
 public class ClassGeneratorUtil implements Constants {
 
 	/**
-	 * The name of the static field holding the reference to the bsh
-	 * static This (the callback namespace for static methods)
+	 * The name of the static field holding the reference to the bsh static This
+	 * (the callback namespace for static methods)
 	 */
 	static final String BSHSTATIC = "_bshStatic";
 
 	/**
-	 * The name of the instance field holding the reference to the bsh
-	 * instance This (the callback namespace for instance methods)
+	 * The name of the instance field holding the reference to the bsh instance
+	 * This (the callback namespace for instance methods)
 	 */
 	private static final String BSHTHIS = "_bshThis";
 
@@ -108,8 +111,8 @@ public class ClassGeneratorUtil implements Constants {
 	private static final String BSHCONSTRUCTORS = "_bshConstructors";
 
 	/**
-	 * The switch branch number for the default constructor.
-	 * The value -1 will cause the default branch to be taken.
+	 * The switch branch number for the default constructor. The value -1 will
+	 * cause the default branch to be taken.
 	 */
 	private static final int DEFAULTCONSTRUCTOR = -1;
 
@@ -131,9 +134,9 @@ public class ClassGeneratorUtil implements Constants {
 	private final Modifiers classModifiers;
 	private boolean isInterface;
 
-
 	/**
-	 * @param packageName e.g. "com.foo.bar"
+	 * @param packageName
+	 *            e.g. "com.foo.bar"
 	 */
 	public ClassGeneratorUtil(Modifiers classModifiers, String className, String packageName, Class superClass, Class[] interfaces, Variable[] vars, DelayedEvalBshMethod[] bshmethods, NameSpace classStaticNameSpace, boolean isInterface) {
 		this.classModifiers = classModifiers;
@@ -172,14 +175,13 @@ public class ClassGeneratorUtil implements Constants {
 		this.methods = (DelayedEvalBshMethod[]) methodsl.toArray(new DelayedEvalBshMethod[methodsl.size()]);
 
 		try {
-			classStaticNameSpace.setLocalVariable(BSHCONSTRUCTORS, constructors, false/*strict*/);
+			classStaticNameSpace.setLocalVariable(BSHCONSTRUCTORS, constructors, false/* strict */);
 		} catch (UtilEvalError e) {
 			throw new InterpreterError("can't set cons var");
 		}
 
 		this.isInterface = isInterface;
 	}
-
 
 	/**
 	 * Generate the class bytecode for this class.
@@ -191,11 +193,17 @@ public class ClassGeneratorUtil implements Constants {
 			classMods |= ACC_INTERFACE;
 		}
 
-		String[] interfaceNames = new String[interfaces.length + (isInterface ? 0 : 1)]; // one more interface for instance init callback
+		String[] interfaceNames = new String[interfaces.length + (isInterface ? 0 : 1)]; // one
+																							// more
+																							// interface
+																							// for
+																							// instance
+																							// init
+																							// callback
 		for (int i = 0; i < interfaces.length; i++) {
 			interfaceNames[i] = Type.getInternalName(interfaces[i]);
 		}
-		if ( ! isInterface) {
+		if (!isInterface) {
 			interfaceNames[interfaces.length] = Type.getInternalName(GeneratedClass.class);
 		}
 
@@ -203,7 +211,7 @@ public class ClassGeneratorUtil implements Constants {
 		ClassWriter cw = new ClassWriter(false);
 		cw.visit(classMods, fqClassName, superClassName, interfaceNames, sourceFile);
 
-		if ( ! isInterface) {
+		if (!isInterface) {
 			// Generate the bsh instance 'This' reference holder field
 			generateField(BSHTHIS + className, "Lbsh/This;", ACC_PUBLIC, cw);
 
@@ -245,8 +253,8 @@ public class ClassGeneratorUtil implements Constants {
 		}
 
 		// If no other constructors, generate a default constructor
-		if ( ! isInterface &&  ! hasConstructor) {
-			generateConstructor(DEFAULTCONSTRUCTOR/*index*/, new String[0], ACC_PUBLIC, cw);
+		if (!isInterface && !hasConstructor) {
+			generateConstructor(DEFAULTCONSTRUCTOR/* index */, new String[0], ACC_PUBLIC, cw);
 		}
 
 		// Generate the delegate methods
@@ -254,7 +262,7 @@ public class ClassGeneratorUtil implements Constants {
 			String returnType = method.getReturnTypeDescriptor();
 
 			// Don't generate private /*or loosely return typed */ methods
-			if (method.hasModifier("private") /*|| returnType == null*/) {
+			if (method.hasModifier("private") /* || returnType == null */) {
 				continue;
 			}
 
@@ -274,7 +282,6 @@ public class ClassGeneratorUtil implements Constants {
 
 		return cw.toByteArray();
 	}
-
 
 	/**
 	 * Translate bsh.Modifiers into ASM modifier bitflags.
@@ -304,21 +311,18 @@ public class ClassGeneratorUtil implements Constants {
 		return mods;
 	}
 
-
 	/**
 	 * Generate a field - static or instance.
 	 */
 	private static void generateField(String fieldName, String type, int modifiers, ClassWriter cw) {
-		cw.visitField(modifiers, fieldName, type, null/*value*/);
+		cw.visitField(modifiers, fieldName, type, null/* value */);
 	}
 
-
 	/**
-	 * Generate a delegate method - static or instance.
-	 * The generated code packs the method arguments into an object array
-	 * (wrapping primitive types in bsh.Primitive), invokes the static or
-	 * instance namespace invokeMethod() method, and then unwraps / returns
-	 * the result.
+	 * Generate a delegate method - static or instance. The generated code packs
+	 * the method arguments into an object array (wrapping primitive types in
+	 * bsh.Primitive), invokes the static or instance namespace invokeMethod()
+	 * method, and then unwraps / returns the result.
 	 */
 	private static void generateMethod(String className, String fqClassName, String methodName, String returnType, String[] paramTypes, int modifiers, ClassWriter cw) {
 		String[] exceptions = null;
@@ -364,7 +368,7 @@ public class ClassGeneratorUtil implements Constants {
 		cv.visitInsn(ICONST_1);
 
 		// Invoke the method This.invokeMethod( name, Class [] sig, boolean )
-		cv.visitMethodInsn(INVOKEVIRTUAL, "bsh/This", "invokeMethod", Type.getMethodDescriptor(Type.getType(Object.class), new Type[]{Type.getType(String.class), Type.getType(Object[].class), Type.getType(Interpreter.class), Type.getType(CallStack.class), Type.getType(SimpleNode.class), Type.getType(Boolean.TYPE)}));
+		cv.visitMethodInsn(INVOKEVIRTUAL, "bsh/This", "invokeMethod", Type.getMethodDescriptor(Type.getType(Object.class), new Type[] { Type.getType(String.class), Type.getType(Object[].class), Type.getType(Interpreter.class), Type.getType(CallStack.class), Type.getType(SimpleNode.class), Type.getType(Boolean.TYPE) }));
 
 		// Generate code to unwrap bsh Primitive types
 		cv.visitMethodInsn(INVOKESTATIC, "bsh/Primitive", "unwrap", "(Ljava/lang/Object;)Ljava/lang/Object;");
@@ -375,7 +379,6 @@ public class ClassGeneratorUtil implements Constants {
 		// Need to calculate this... just fudging here for now.
 		cv.visitMaxs(20, 20);
 	}
-
 
 	/**
 	 * Generate a constructor.
@@ -393,7 +396,7 @@ public class ClassGeneratorUtil implements Constants {
 		CodeVisitor cv = cw.visitMethod(modifiers, "<init>", methodDescriptor, exceptions);
 
 		// Generate code to push arguments as an object array
-		generateParameterReifierCode(paramTypes, false/*isStatic*/, cv);
+		generateParameterReifierCode(paramTypes, false/* isStatic */, cv);
 		cv.visitVarInsn(ASTORE, argsVar);
 
 		// Generate the code implementing the alternate constructor switch
@@ -419,19 +422,17 @@ public class ClassGeneratorUtil implements Constants {
 		cv.visitMaxs(20, 20);
 	}
 
-
 	/**
-	 * Generate a switch with a branch for each possible alternate
-	 * constructor.  This includes all superclass constructors and all
-	 * constructors of this class.  The default branch of this switch is the
-	 * default superclass constructor.
+	 * Generate a switch with a branch for each possible alternate constructor.
+	 * This includes all superclass constructors and all constructors of this
+	 * class. The default branch of this switch is the default superclass
+	 * constructor.
 	 * <p/>
-	 * This method also generates the code to call the static
-	 * ClassGeneratorUtil
+	 * This method also generates the code to call the static ClassGeneratorUtil
 	 * getConstructorArgs() method which inspects the scripted constructor to
 	 * find the alternate constructor signature (if any) and evalute the
-	 * arguments at runtime.  The getConstructorArgs() method returns the
-	 * actual arguments as well as the index of the constructor to call.
+	 * arguments at runtime. The getConstructorArgs() method returns the actual
+	 * arguments as well as the index of the constructor to call.
 	 */
 	void generateConstructorSwitch(int consIndex, int argsVar, int consArgsVar, CodeVisitor cv) {
 		Label defaultLabel = new Label();
@@ -471,7 +472,7 @@ public class ClassGeneratorUtil implements Constants {
 		cv.visitFieldInsn(GETFIELD, "bsh/ClassGeneratorUtil$ConstructorArgs", "selector", "I");
 
 		// start switch
-		cv.visitTableSwitchInsn(0/*min*/, cases - 1/*max*/, defaultLabel, labels);
+		cv.visitTableSwitchInsn(0/* min */, cases - 1/* max */, defaultLabel, labels);
 
 		// generate switch body
 		int index = 0;
@@ -493,16 +494,14 @@ public class ClassGeneratorUtil implements Constants {
 	}
 
 	/*
-			 Generate a branch of the constructor switch.  This method is called by
-			 generateConstructorSwitch.
-			 The code generated by this method assumes that the argument array is
-			 on the stack.
-		 */
-
+	 * Generate a branch of the constructor switch. This method is called by
+	 * generateConstructorSwitch. The code generated by this method assumes that
+	 * the argument array is on the stack.
+	 */
 
 	private static void doSwitchBranch(int index, String targetClassName, String[] paramTypes, Label endLabel, Label[] labels, int consArgsVar, CodeVisitor cv) {
 		cv.visitLabel(labels[index]);
-		//cv.visitLineNumber( index, labels[index] );
+		// cv.visitLineNumber( index, labels[index] );
 		cv.visitVarInsn(ALOAD, 0); // push this before args
 
 		// Unload the arguments from the ConstructorArgs object
@@ -550,7 +549,6 @@ public class ClassGeneratorUtil implements Constants {
 		cv.visitJumpInsn(GOTO, endLabel);
 	}
 
-
 	private static String getMethodDescriptor(String returnType, String[] paramTypes) {
 		StringBuilder sb = new StringBuilder("(");
 		for (String paramType : paramTypes) {
@@ -560,12 +558,10 @@ public class ClassGeneratorUtil implements Constants {
 		return sb.toString();
 	}
 
-
 	/**
-	 * Generate a superclass method delegate accessor method.
-	 * These methods are specially named methods which allow access to
-	 * overridden methods of the superclass (which the Java reflection API
-	 * normally does not allow).
+	 * Generate a superclass method delegate accessor method. These methods are
+	 * specially named methods which allow access to overridden methods of the
+	 * superclass (which the Java reflection API normally does not allow).
 	 */
 	// Maybe combine this with generateMethod()
 	private static void generateSuperDelegateMethod(String superClassName, String methodName, String returnType, String[] paramTypes, int modifiers, ClassWriter cw) {
@@ -601,7 +597,6 @@ public class ClassGeneratorUtil implements Constants {
 		cv.visitMaxs(20, 20);
 	}
 
-
 	boolean classContainsMethod(Class clas, String methodName, String[] paramTypes) {
 		while (clas != null) {
 			Method[] methods = clas.getDeclaredMethods();
@@ -627,7 +622,6 @@ public class ClassGeneratorUtil implements Constants {
 		return false;
 	}
 
-
 	/**
 	 * Generate return code for a normal bytecode
 	 */
@@ -640,7 +634,7 @@ public class ClassGeneratorUtil implements Constants {
 				opcode = DRETURN;
 			} else if (returnType.equals("F")) {
 				opcode = FRETURN;
-			} else if (returnType.equals("J"))  //long
+			} else if (returnType.equals("J")) // long
 			{
 				opcode = LRETURN;
 			}
@@ -652,15 +646,15 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
-	 * Generates the code to reify the arguments of the given method.
-	 * For a method "int m (int i, String s)", this code is the bytecode
-	 * corresponding to the "new Object[] { new bsh.Primitive(i), s }"
-	 * expression.
-	 *
-	 * @param cv	   the code visitor to be used to generate the bytecode.
-	 * @param isStatic the enclosing methods is static
+	 * Generates the code to reify the arguments of the given method. For a
+	 * method "int m (int i, String s)", this code is the bytecode corresponding
+	 * to the "new Object[] { new bsh.Primitive(i), s }" expression.
+	 * 
+	 * @param cv
+	 *            the code visitor to be used to generate the bytecode.
+	 * @param isStatic
+	 *            the enclosing methods is static
 	 * @author Eric Bruneton
 	 * @author Pat Niemeyer
 	 */
@@ -692,7 +686,7 @@ public class ClassGeneratorUtil implements Constants {
 				cv.visitMethodInsn(INVOKESPECIAL, type, "<init>", "(" + desc + ")V");
 			} else {
 				// Technically incorrect here - we need to wrap null values
-				// as bsh.Primitive.NULL.  However the This.invokeMethod()
+				// as bsh.Primitive.NULL. However the This.invokeMethod()
 				// will do that much for us.
 				// We need to generate a conditional here to test for null
 				// and return Primitive.NULL
@@ -703,13 +697,13 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
-	 * Generates the code to unreify the result of the given method.  For a
-	 * method "int m (int i, String s)", this code is the bytecode
-	 * corresponding to the "((Integer)...).intValue()" expression.
-	 *
-	 * @param cv the code visitor to be used to generate the bytecode.
+	 * Generates the code to unreify the result of the given method. For a
+	 * method "int m (int i, String s)", this code is the bytecode corresponding
+	 * to the "((Integer)...).intValue()" expression.
+	 * 
+	 * @param cv
+	 *            the code visitor to be used to generate the bytecode.
 	 * @author Eric Bruneton
 	 * @author Pat Niemeyer
 	 */
@@ -745,7 +739,7 @@ public class ClassGeneratorUtil implements Constants {
 			} else if (returnType.equals("C")) {
 				type = "java/lang/Character";
 				meth = "charValue";
-			} else /*if (returnType.equals("S") )*/ {
+			} else /* if (returnType.equals("S") ) */{
 				type = "java/lang/Short";
 				meth = "shortValue";
 			}
@@ -760,17 +754,18 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
-	 * Evaluate the arguments (if any) for the constructor specified by
-	 * the constructor index.  Return the ConstructorArgs object which
-	 * contains the actual arguments to the alternate constructor and also the
-	 * index of that constructor for the constructor switch.
-	 *
-	 * @param consArgs the arguments to the constructor.  These are necessary in
-	 *                 the evaluation of the alt constructor args.  e.g. Foo(a) { super(a); }
-	 * @return the ConstructorArgs object containing a constructor selector
-	 *         and evaluated arguments for the alternate constructor
+	 * Evaluate the arguments (if any) for the constructor specified by the
+	 * constructor index. Return the ConstructorArgs object which contains the
+	 * actual arguments to the alternate constructor and also the index of that
+	 * constructor for the constructor switch.
+	 * 
+	 * @param consArgs
+	 *            the arguments to the constructor. These are necessary in the
+	 *            evaluation of the alt constructor args. e.g. Foo(a) {
+	 *            super(a); }
+	 * @return the ConstructorArgs object containing a constructor selector and
+	 *         evaluated arguments for the alternate constructor
 	 */
 	public static ConstructorArgs getConstructorArgs(String superClassName, This classStaticThis, Object[] consArgs, int index) {
 		DelayedEvalBshMethod[] constructors;
@@ -818,7 +813,7 @@ public class ClassGeneratorUtil implements Constants {
 		Class[] consArgTypes = constructor.getParameterTypes();
 		for (int i = 0; i < consArgs.length; i++) {
 			try {
-				consArgsNameSpace.setTypedVariable(consArgNames[i], consArgTypes[i], consArgs[i], null/*modifiers*/);
+				consArgsNameSpace.setTypedVariable(consArgNames[i], consArgTypes[i], consArgs[i], null/* modifiers */);
 			} catch (UtilEvalError e) {
 				throw new InterpreterError("err setting local cons arg:" + e);
 			}
@@ -876,14 +871,12 @@ public class ClassGeneratorUtil implements Constants {
 		return new ConstructorArgs(selector, args);
 	}
 
-
 	private static final ThreadLocal<NameSpace> CONTEXT_NAMESPACE = new ThreadLocal<NameSpace>();
 	private static final ThreadLocal<Interpreter> CONTEXT_INTERPRETER = new ThreadLocal<Interpreter>();
 
-
 	/**
 	 * Register actual context, used by generated class constructor, which calls
-	 * {@link  #initInstance(GeneratedClass, String, Object[])}.
+	 * {@link #initInstance(GeneratedClass, String, Object[])}.
 	 */
 	static void registerConstructorContext(CallStack callstack, Interpreter interpreter) {
 		if (callstack != null) {
@@ -898,12 +891,10 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
-	 * Initialize an instance of the class.
-	 * This method is called from the generated class constructor to evaluate
-	 * the instance initializer and scripted constructor in the instance
-	 * namespace.
+	 * Initialize an instance of the class. This method is called from the
+	 * generated class constructor to evaluate the instance initializer and
+	 * scripted constructor in the instance namespace.
 	 */
 	public static void initInstance(GeneratedClass instance, String className, Object[] args) {
 		Class[] sig = Types.getTypes(args);
@@ -928,7 +919,6 @@ public class ClassGeneratorUtil implements Constants {
 				interpreter = classStaticThis.declaringInterpreter;
 			}
 
-
 			// Get the instance initializer block from the static This
 			BSHBlock instanceInitBlock;
 			try {
@@ -942,7 +932,9 @@ public class ClassGeneratorUtil implements Constants {
 				instanceNameSpace = classStaticThis.getNameSpace().copy();
 				instanceNameSpace.setParent(CONTEXT_NAMESPACE.get());
 			} else {
-				instanceNameSpace = new NameSpace(classStaticThis.getNameSpace(), className); // todo: old code
+				instanceNameSpace = new NameSpace(classStaticThis.getNameSpace(), className); // todo:
+																								// old
+																								// code
 			}
 			instanceNameSpace.isClass = true;
 
@@ -950,7 +942,7 @@ public class ClassGeneratorUtil implements Constants {
 			instanceThis = instanceNameSpace.getThis(interpreter);
 			try {
 				LHS lhs = Reflect.getLHSObjectField(instance, BSHTHIS + className);
-				lhs.assign(instanceThis, false/*strict*/);
+				lhs.assign(instanceThis, false/* strict */);
 			} catch (Exception e) {
 				throw new InterpreterError("Error in class gen setup: " + e);
 			}
@@ -963,7 +955,7 @@ public class ClassGeneratorUtil implements Constants {
 
 			// evaluate the instance portion of the block in it
 			try { // Evaluate the initializer block
-				instanceInitBlock.evalBlock(callstack, interpreter, true/*override*/, ClassGenerator.ClassNodeFilter.CLASSINSTANCE);
+				instanceInitBlock.evalBlock(callstack, interpreter, true/* override */, ClassGenerator.ClassNodeFilter.CLASSINSTANCE);
 			} catch (Exception e) {
 				throw new InterpreterError("Error in class initialization: " + e, e);
 			}
@@ -972,7 +964,7 @@ public class ClassGeneratorUtil implements Constants {
 
 		} else {
 			// The object instance has already been initialzed by another
-			// constructor.  Fall through to invoke the constructor body below.
+			// constructor. Fall through to invoke the constructor body below.
 			interpreter = instanceThis.declaringInterpreter;
 			instanceNameSpace = instanceThis.getNameSpace();
 		}
@@ -982,7 +974,7 @@ public class ClassGeneratorUtil implements Constants {
 		String constructorName = getBaseName(className);
 		try {
 			// Find the constructor (now in the instance namespace)
-			BshMethod constructor = instanceNameSpace.getMethod(constructorName, sig, true/*declaredOnly*/);
+			BshMethod constructor = instanceNameSpace.getMethod(constructorName, sig, true/* declaredOnly */);
 
 			// if args, we must have constructor
 			if (args.length > 0 && constructor == null) {
@@ -991,7 +983,7 @@ public class ClassGeneratorUtil implements Constants {
 
 			// Evaluate the constructor
 			if (constructor != null) {
-				constructor.invoke(args, interpreter, callstack, null/*callerInfo*/, false/*overrideNameSpace*/);
+				constructor.invoke(args, interpreter, callstack, null/* callerInfo */, false/* overrideNameSpace */);
 			}
 		} catch (Exception e) {
 			if (e instanceof TargetError) {
@@ -1004,11 +996,11 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
 	 * Get the static bsh namespace field from the class.
-	 *
-	 * @param className may be the name of clas itself or a superclass of clas.
+	 * 
+	 * @param className
+	 *            may be the name of clas itself or a superclass of clas.
 	 */
 	private static This getClassStaticThis(Class clas, String className) {
 		try {
@@ -1018,12 +1010,11 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
 	 * Get the instance bsh namespace field from the object instance.
-	 *
-	 * @return the class instance This object or null if the object has not
-	 *         been initialized.
+	 * 
+	 * @return the class instance This object or null if the object has not been
+	 *         initialized.
 	 */
 	static This getClassInstanceThis(Object instance, String className) {
 		try {
@@ -1034,14 +1025,12 @@ public class ClassGeneratorUtil implements Constants {
 		}
 	}
 
-
 	/**
 	 * Does the type descriptor string describe a primitive type?
 	 */
 	private static boolean isPrimitive(String typeDescriptor) {
 		return typeDescriptor.length() == 1; // right?
 	}
-
 
 	private static String[] getTypeDescriptors(Class[] cparams) {
 		String[] sa = new String[cparams.length];
@@ -1050,7 +1039,6 @@ public class ClassGeneratorUtil implements Constants {
 		}
 		return sa;
 	}
-
 
 	/**
 	 * If a non-array object type, remove the prefix "L" and suffix ";".
@@ -1064,7 +1052,6 @@ public class ClassGeneratorUtil implements Constants {
 		return s.substring(1, s.length() - 1);
 	}
 
-
 	private static String getBaseName(String className) {
 		int i = className.indexOf("$");
 		if (i == -1) {
@@ -1074,13 +1061,13 @@ public class ClassGeneratorUtil implements Constants {
 		return className.substring(i + 1);
 	}
 
-
 	/**
-	 * A ConstructorArgs object holds evaluated arguments for a constructor
-	 * call as well as the index of a possible alternate selector to invoke.
-	 * This object is used by the constructor switch.
-	 *
-	 * @see bsh.ClassGeneratorUtil#generateConstructor(int, String[], int, bsh.org.objectweb.asm.ClassWriter)
+	 * A ConstructorArgs object holds evaluated arguments for a constructor call
+	 * as well as the index of a possible alternate selector to invoke. This
+	 * object is used by the constructor switch.
+	 * 
+	 * @see bsh.ClassGeneratorUtil#generateConstructor(int, String[], int,
+	 *      bsh.org.objectweb.asm.ClassWriter)
 	 */
 	public static class ConstructorArgs {
 
@@ -1093,7 +1080,6 @@ public class ClassGeneratorUtil implements Constants {
 		Object[] args;
 		int arg;
 
-
 		/**
 		 * The index of the constructor to call.
 		 */
@@ -1101,62 +1087,50 @@ public class ClassGeneratorUtil implements Constants {
 		ConstructorArgs() {
 		}
 
-
 		ConstructorArgs(int selector, Object[] args) {
 			this.selector = selector;
 			this.args = args;
 		}
 
-
 		Object next() {
 			return args[arg++];
 		}
-
 
 		public boolean getBoolean() {
 			return (Boolean) next();
 		}
 
-
 		public byte getByte() {
 			return (Byte) next();
 		}
-
 
 		public char getChar() {
 			return (Character) next();
 		}
 
-
 		public short getShort() {
 			return (Short) next();
 		}
-
 
 		public int getInt() {
 			return (Integer) next();
 		}
 
-
 		public long getLong() {
 			return (Long) next();
 		}
-
 
 		public double getDouble() {
 			return (Double) next();
 		}
 
-
 		public float getFloat() {
 			return (Float) next();
 		}
-
 
 		public Object getObject() {
 			return next();
 		}
 	}
-
 
 }

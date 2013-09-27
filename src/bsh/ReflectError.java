@@ -31,12 +31,18 @@
  *                                                                           *
  *****************************************************************************/
 
-
 package bsh;
 
-class ReflectError extends Exception
-{
-	public ReflectError() { super(); }
-	public ReflectError(String s) { super(s); }
-	public ReflectError(String s,Throwable t) { super(s,t); }
+class ReflectError extends Exception {
+	public ReflectError() {
+		super();
+	}
+
+	public ReflectError(String s) {
+		super(s);
+	}
+
+	public ReflectError(String s, Throwable t) {
+		super(s, t);
+	}
 }

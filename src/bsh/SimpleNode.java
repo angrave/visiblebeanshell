@@ -31,40 +31,38 @@
  *                                                                           *
  *****************************************************************************/
 
-
 package bsh;
+
 /*
-	Note: great care (and lots of typing) were taken to insure that the
-	namespace and interpreter references are passed on the stack and not 
-	(as they were erroneously before) installed in instance variables...
-	Each of these node objects must be re-entrable to allow for recursive 
-	situations.
+ Note: great care (and lots of typing) were taken to insure that the
+ namespace and interpreter references are passed on the stack and not 
+ (as they were erroneously before) installed in instance variables...
+ Each of these node objects must be re-entrable to allow for recursive 
+ situations.
 
-	The only data which should really be stored in instance vars here should 
-	be parse tree data... features of the node which should never change (e.g.
-	the number of arguments, etc.)
-	
-	Exceptions would be public fields of simple classes that just publish
-	data produced by the last eval()... data that is used immediately. We'll
-	try to remember to mark these as transient to highlight them.
+ The only data which should really be stored in instance vars here should 
+ be parse tree data... features of the node which should never change (e.g.
+ the number of arguments, etc.)
 
-*/
-class SimpleNode implements Node 
-{
-	public static SimpleNode JAVACODE =
-		new SimpleNode( -1 ) {
-			public String getSourceFile() {
-				return "<Called from Java Code>";
-			}
+ Exceptions would be public fields of simple classes that just publish
+ data produced by the last eval()... data that is used immediately. We'll
+ try to remember to mark these as transient to highlight them.
 
-			public int getLineNumber() {
-				return -1;
-			}
+ */
+class SimpleNode implements Node {
+	public static SimpleNode JAVACODE = new SimpleNode(-1) {
+		public String getSourceFile() {
+			return "<Called from Java Code>";
+		}
 
-			public String getText()  {
-				return "<Compiled Java Code>";
-			}
-		};
+		public int getLineNumber() {
+			return -1;
+		}
+
+		public String getText() {
+			return "<Compiled Java Code>";
+		}
+	};
 
 	protected Node parent;
 	protected Node[] children;
@@ -74,37 +72,49 @@ class SimpleNode implements Node
 	/** the source of the text from which this was parsed */
 	String sourceFile;
 
+	private static long previousHash;
+	// Todo this should probably live on the interpreter - that way we could
+	// have interpreter specific handles
+	private static String lineNumberPreamble = "notifyEvalSourcePosition";
+
 	public SimpleNode(int i) {
 		id = i;
 	}
 
-	public void jjtOpen() { }
-	public void jjtClose() { }
+	public void jjtOpen() {
+	}
 
-	public void jjtSetParent(Node n) { parent = n; }
-	public Node jjtGetParent() { return parent; }
-	//public SimpleNode getParent() { return (SimpleNode)parent; }
+	public void jjtClose() {
+	}
 
-	public void jjtAddChild(Node n, int i)
-	{
+	public void jjtSetParent(Node n) {
+		parent = n;
+	}
+
+	public Node jjtGetParent() {
+		return parent;
+	}
+
+	// public SimpleNode getParent() { return (SimpleNode)parent; }
+
+	public void jjtAddChild(Node n, int i) {
 		if (children == null)
 			children = new Node[i + 1];
-		else
-			if (i >= children.length)
-			{
-				Node c[] = new Node[i + 1];
-				System.arraycopy(children, 0, c, 0, children.length);
-				children = c;
-			}
+		else if (i >= children.length) {
+			Node c[] = new Node[i + 1];
+			System.arraycopy(children, 0, c, 0, children.length);
+			children = c;
+		}
 
 		children[i] = n;
 	}
 
-	public Node jjtGetChild(int i) { 
-		return children[i]; 
+	public Node jjtGetChild(int i) {
+		return children[i];
 	}
-	public SimpleNode getChild( int i ) {
-		return (SimpleNode)jjtGetChild(i);
+
+	public SimpleNode getChild(int i) {
+		return (SimpleNode) jjtGetChild(i);
 	}
 
 	public int jjtGetNumChildren() {
@@ -112,81 +122,99 @@ class SimpleNode implements Node
 	}
 
 	/*
-		You can override these two methods in subclasses of SimpleNode to
-		customize the way the node appears when the tree is dumped.  If
-		your output uses more than one line you should override
-		toString(String), otherwise overriding toString() is probably all
-		you need to do.
-	*/
-	public String toString() { return ParserTreeConstants.jjtNodeName[id]; }
-	public String toString(String prefix) { return prefix + toString(); }
+	 * You can override these two methods in subclasses of SimpleNode to
+	 * customize the way the node appears when the tree is dumped. If your
+	 * output uses more than one line you should override toString(String),
+	 * otherwise overriding toString() is probably all you need to do.
+	 */
+	public String toString() {
+		return ParserTreeConstants.jjtNodeName[id];
+	}
+
+	public String toString(String prefix) {
+		return prefix + toString();
+	}
 
 	/*
-		Override this method if you want to customize how the node dumps
-		out its children.
-	*/
-	public void dump(String prefix)
-	{
+	 * Override this method if you want to customize how the node dumps out its
+	 * children.
+	 */
+	public void dump(String prefix) {
 		System.out.println(toString(prefix));
-		if(children != null)
-		{
-			for(int i = 0; i < children.length; ++i)
-			{
-				SimpleNode n = (SimpleNode)children[i];
-				if (n != null)
-				{
+		if (children != null) {
+			for (int i = 0; i < children.length; ++i) {
+				SimpleNode n = (SimpleNode) children[i];
+				if (n != null) {
 					n.dump(prefix + " ");
 				}
 			}
 		}
 	}
 
-	//  ---- BeanShell specific stuff hereafter ----  //
+	// ---- BeanShell specific stuff hereafter ---- //
 
 	/**
-		Detach this node from its parent.
-		This is primarily useful in node serialization.
-		(see BSHMethodDeclaration)
-	*/
+	 * Detach this node from its parent. This is primarily useful in node
+	 * serialization. (see BSHMethodDeclaration)
+	 */
 	public void prune() {
-		jjtSetParent( null );
+		jjtSetParent(null);
 	}
 
 	/**
-		This is the general signature for evaluation of a node.
-	*/
-	public Object eval( CallStack callstack, Interpreter interpreter ) 
-		throws EvalError
+	 * This is the general signature for evaluation of a node.
+	 */
+	public Object eval(CallStack callstack, Interpreter interpreter) throws EvalError {
+		publishLineNumber();
+		throw new InterpreterError("Unimplemented or inappropriate for " + getClass().getName());
+	}
+
+	public void publishLineNumber() {
+		long hash = firstToken.beginLine ^ (firstToken.beginColumn << 16) ^ (lastToken.endColumn << 32) ^ (lastToken.endLine << 48);
+		if (hash == previousHash)
+			return;
+		previousHash = hash;
+
+		String mesg = String.format("%s(%d, %d,%d,%d)", lineNumberPreamble, firstToken.beginLine, firstToken.beginColumn, lastToken.endLine, lastToken.endColumn);
+
+		//System.err.println(mesg);
+		classes.doppio.JavaScript.eval(mesg);
+	}
+	
+	public static void setPublishLineNumberPreamble(String s)
 	{
-		throw new InterpreterError(
-			"Unimplemented or inappropriate for " + getClass().getName() );
+		lineNumberPreamble = s;
 	}
 
-    public void evalNote() {
-        System.out.print(">>");
-        System.out.print(firstToken.specialToken);
-        System.out.println("<<");
-    }
+	/*
+	 * public void evalNote() { StringBuilder text = new StringBuilder(); Token
+	 * t = firstToken; int lineNum = t.endLine; while (t != null) { if (lineNum
+	 * == t.endLine) { if (t.image.equals(";") || t.image.equals("(") ||
+	 * t.image.equals(")")) if (t.image.equals("("))
+	 * text.deleteCharAt(text.length() - 1); text.append(t.image + " "); } else
+	 * { System.out.println("Line " + lineNum + ": " + text); text = new
+	 * StringBuilder(); text.append(t.image + " "); lineNum = t.endLine; } t =
+	 * t.next; } System.out.println("Line " + lineNum + ": " + text); }
+	 */
 
 	/**
-		Set the name of the source file (or more generally source) of
-		the text from which this node was parsed.
-	*/
-	public void setSourceFile( String sourceFile ) {
+	 * Set the name of the source file (or more generally source) of the text
+	 * from which this node was parsed.
+	 */
+	public void setSourceFile(String sourceFile) {
 		this.sourceFile = sourceFile;
 	}
 
 	/**
-		Get the name of the source file (or more generally source) of
-		the text from which this node was parsed.
-		This will recursively search up the chain of parent nodes until
-		a source is found or return a string indicating that the source
-		is unknown.
-	*/
+	 * Get the name of the source file (or more generally source) of the text
+	 * from which this node was parsed. This will recursively search up the
+	 * chain of parent nodes until a source is found or return a string
+	 * indicating that the source is unknown.
+	 */
 	public String getSourceFile() {
-		if ( sourceFile == null )
-			if ( parent != null )
-				return ((SimpleNode)parent).getSourceFile();
+		if (sourceFile == null)
+			if (parent != null)
+				return ((SimpleNode) parent).getSourceFile();
 			else
 				return "<unknown file>";
 		else
@@ -194,37 +222,34 @@ class SimpleNode implements Node
 	}
 
 	/**
-		Get the line number of the starting token
-	*/
+	 * Get the line number of the starting token
+	 */
 	public int getLineNumber() {
 		return firstToken.beginLine;
 	}
 
 	/**
-		Get the ending line number of the starting token
-	public int getEndLineNumber() {
-		return lastToken.endLine;
-	}
-	*/
+	 * Get the ending line number of the starting token public int
+	 * getEndLineNumber() { return lastToken.endLine; }
+	 */
 
 	/**
-		Get the text of the tokens comprising this node.
-	*/
-	public String getText() 
-	{
+	 * Get the text of the tokens comprising this node.
+	 */
+	public String getText() {
 		StringBuilder text = new StringBuilder();
 		Token t = firstToken;
-		while ( t!=null ) {
+		while (t != null) {
 			text.append(t.image);
-			if ( !t.image.equals(".") )
+			if (!t.image.equals("."))
 				text.append(" ");
-			if ( t==lastToken ||
-				t.image.equals("{") || t.image.equals(";") )
+			if (t == lastToken || t.image.equals("{") || t.image.equals(";")) {
+				System.out.println("Line is: " + t.endLine);
 				break;
-			t=t.next;
+			}
+			t = t.next;
 		}
-			
+		System.out.println("Hello World!");
 		return text.toString();
 	}
 }
-

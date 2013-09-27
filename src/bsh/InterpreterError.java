@@ -43,11 +43,8 @@ public class InterpreterError extends RuntimeException {
 		super(s);
 	}
 
-
 	public InterpreterError(final String s, final Throwable cause) {
 		super(s, cause);
 	}
 
-
 }
-

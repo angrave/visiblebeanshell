@@ -1,8 +1,9 @@
 package bsh;
 
-import javax.script.ScriptEngine;
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
+
+import javax.script.ScriptEngine;
 
 // 	Adopted from http://ikayzo.org/svn/beanshell/BeanShell/engine/src/bsh/engine/BshScriptEngineFactory.java
 public class BshScriptEngineFactory implements javax.script.ScriptEngineFactory {
@@ -14,41 +15,33 @@ public class BshScriptEngineFactory implements javax.script.ScriptEngineFactory 
 
 	final List<String> names = Arrays.asList("beanshell", "bsh");
 
-
 	public String getEngineName() {
 		return "BeanShell Engine";
 	}
-
 
 	public String getEngineVersion() {
 		return Interpreter.VERSION;
 	}
 
-
 	public List<String> getExtensions() {
 		return extensions;
 	}
-
 
 	public List<String> getMimeTypes() {
 		return mimeTypes;
 	}
 
-
 	public List<String> getNames() {
 		return names;
 	}
-
 
 	public String getLanguageName() {
 		return "BeanShell";
 	}
 
-
 	public String getLanguageVersion() {
 		return bsh.Interpreter.VERSION + "";
 	}
-
 
 	public Object getParameter(String param) {
 		if (param.equals(ScriptEngine.ENGINE)) {
@@ -73,10 +66,9 @@ public class BshScriptEngineFactory implements javax.script.ScriptEngineFactory 
 		return null;
 	}
 
-
 	public String getMethodCallSyntax(String objectName, String methodName, String... args) {
 		// Note: this is very close to the bsh.StringUtil.methodString()
-		// method, which constructs a method signature from arg *types*.  Maybe
+		// method, which constructs a method signature from arg *types*. Maybe
 		// combine these later.
 
 		StringBuffer sb = new StringBuffer();
@@ -94,17 +86,15 @@ public class BshScriptEngineFactory implements javax.script.ScriptEngineFactory 
 		return sb.toString();
 	}
 
-
 	public String getOutputStatement(String message) {
 		return "print( \"" + message + "\" );";
 	}
-
 
 	public String getProgram(String... statements) {
 		StringBuffer sb = new StringBuffer();
 		for (final String statement : statements) {
 			sb.append(statement);
-			if ( ! statement.endsWith(";")) {
+			if (!statement.endsWith(";")) {
 				sb.append(";");
 			}
 			sb.append("\n");
@@ -116,11 +106,9 @@ public class BshScriptEngineFactory implements javax.script.ScriptEngineFactory 
 
 	// Begin impl ScriptEngineFactory
 
-
 	public ScriptEngine getScriptEngine() {
 		return new BshScriptEngine();
 	}
 
 	// End impl ScriptEngineFactory
 }
-

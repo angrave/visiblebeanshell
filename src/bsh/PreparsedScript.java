@@ -1,24 +1,24 @@
 package bsh;
 
-import bsh.classpath.ClassManagerImpl;
-
-import java.io.*;
+import java.io.PrintStream;
+import java.io.StringReader;
 import java.util.Map;
 
+import bsh.classpath.ClassManagerImpl;
+
 /**
- * With this class the script source is only parsed once and the resulting AST is used for
- * {@link #invoke(java.util.Map) every invocation}. This class is designed to be thread-safe.  
+ * With this class the script source is only parsed once and the resulting AST
+ * is used for {@link #invoke(java.util.Map) every invocation}. This class is
+ * designed to be thread-safe.
  */
 public class PreparsedScript {
 
 	private final BshMethod _method;
 	private final Interpreter _interpreter;
 
-
 	public PreparsedScript(final String source) throws EvalError {
 		this(source, getDefaultClassLoader());
 	}
-
 
 	private static ClassLoader getDefaultClassLoader() {
 		ClassLoader cl = null;
@@ -36,7 +36,6 @@ public class PreparsedScript {
 		return ClassLoader.getSystemClassLoader();
 	}
 
-
 	public PreparsedScript(final String source, final ClassLoader classLoader) throws EvalError {
 		final ClassManagerImpl classManager = new ClassManagerImpl();
 		classManager.setClassLoader(classLoader);
@@ -49,7 +48,6 @@ public class PreparsedScript {
 			throw new IllegalStateException(e);
 		}
 	}
-
 
 	public Object invoke(final Map<String, ?> context) throws EvalError {
 		final NameSpace nameSpace = new NameSpace(_interpreter.getClassManager(), "BeanshellExecutable");
@@ -65,19 +63,17 @@ public class PreparsedScript {
 		}
 		final Object result = method.invoke(new Object[0], _interpreter);
 		if (result instanceof Primitive) {
-			if (( (Primitive) result).getType() == Void.TYPE) {
+			if (((Primitive) result).getType() == Void.TYPE) {
 				return null;
 			}
-			return ( (Primitive) result).getValue();
+			return ((Primitive) result).getValue();
 		}
 		return result;
 	}
 
-
 	public void setOut(final PrintStream value) {
 		_interpreter.setOut(value);
 	}
-
 
 	public void setErr(final PrintStream value) {
 		_interpreter.setErr(value);

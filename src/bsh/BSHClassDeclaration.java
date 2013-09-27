@@ -35,16 +35,13 @@ package bsh;
 
 /**
 */
-class BSHClassDeclaration extends SimpleNode
-{
+class BSHClassDeclaration extends SimpleNode {
 	/**
-		The class instance initializer method name.
-		A BshMethod by this name is installed by the class delcaration into 
-		the static class body namespace.  
-		It is called once to initialize the static members of the class space 
-		and each time an instances is created to initialize the instance
-		members.
-	*/
+	 * The class instance initializer method name. A BshMethod by this name is
+	 * installed by the class delcaration into the static class body namespace.
+	 * It is called once to initialize the static members of the class space and
+	 * each time an instances is created to initialize the instance members.
+	 */
 	static final String CLASSINITNAME = "_bshClassInit";
 
 	String name;
@@ -54,51 +51,49 @@ class BSHClassDeclaration extends SimpleNode
 	boolean isInterface;
 	private Class<?> generatedClass;
 
-	BSHClassDeclaration(int id) { super(id); }
+	BSHClassDeclaration(int id) {
+		super(id);
+	}
 
 	/**
 	*/
-	public synchronized Object eval(final CallStack callstack, final Interpreter interpreter ) throws EvalError {
+	public synchronized Object eval(final CallStack callstack, final Interpreter interpreter) throws EvalError {
+		publishLineNumber();
 		if (generatedClass == null) {
 			generatedClass = generateClass(callstack, interpreter);
 		}
 		return generatedClass;
 	}
 
-
 	private Class<?> generateClass(final CallStack callstack, final Interpreter interpreter) throws EvalError {
+		publishLineNumber();
 		int child = 0;
 
 		// resolve superclass if any
 		Class superClass = null;
-		if ( extend ) {
-			BSHAmbiguousName superNode = (BSHAmbiguousName)jjtGetChild(child++);
-			superClass = superNode.toClass( callstack, interpreter );
+		if (extend) {
+			BSHAmbiguousName superNode = (BSHAmbiguousName) jjtGetChild(child++);
+			superClass = superNode.toClass(callstack, interpreter);
 		}
 
 		// Get interfaces
-		Class [] interfaces = new Class[numInterfaces];
-		for( int i=0; i<numInterfaces; i++) {
-			BSHAmbiguousName node = (BSHAmbiguousName)jjtGetChild(child++);
+		Class[] interfaces = new Class[numInterfaces];
+		for (int i = 0; i < numInterfaces; i++) {
+			BSHAmbiguousName node = (BSHAmbiguousName) jjtGetChild(child++);
 			interfaces[i] = node.toClass(callstack, interpreter);
-			if ( !interfaces[i].isInterface() )
-				throw new EvalError(
-					"Type: "+node.text+" is not an interface!",
-					this, callstack );
+			if (!interfaces[i].isInterface())
+				throw new EvalError("Type: " + node.text + " is not an interface!", this, callstack);
 		}
 
 		BSHBlock block;
 		// Get the class body BSHBlock
-		if ( child < jjtGetNumChildren() )
+		if (child < jjtGetNumChildren())
 			block = (BSHBlock) jjtGetChild(child);
 		else
-			block = new BSHBlock( ParserTreeConstants.JJTBLOCK );
+			block = new BSHBlock(ParserTreeConstants.JJTBLOCK);
 
-		return ClassGenerator.getClassGenerator().generateClass(
-			name, modifiers, interfaces, superClass, block, isInterface,
-			callstack, interpreter );
+		return ClassGenerator.getClassGenerator().generateClass(name, modifiers, interfaces, superClass, block, isInterface, callstack, interpreter);
 	}
-
 
 	public String toString() {
 		return "ClassDeclaration: " + name;
