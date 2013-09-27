@@ -175,10 +175,19 @@ class SimpleNode implements Node {
 			return;
 		previousHash = hash;
 
-		String mesg = String.format("%s(%d, %d,%d,%d)", lineNumberPreamble, firstToken.beginLine, firstToken.beginColumn, lastToken.endLine, lastToken.endColumn);
-
+		StringBuilder mesg = new StringBuilder();
+		mesg.append(lineNumberPreamble);
+		mesg.append('(');
+		mesg.append(firstToken.beginLine);
+		mesg.append(',');
+		mesg.append(firstToken.beginColumn);
+		mesg.append(',');
+		mesg.append(lastToken.endLine);
+		mesg.append(',');
+		mesg.append(lastToken.endColumn);
+		mesg.append(')');
 		//System.err.println(mesg);
-		classes.doppio.JavaScript.eval(mesg);
+		classes.doppio.JavaScript.eval(mesg.toString());
 	}
 	
 	public static void setPublishLineNumberPreamble(String s)
